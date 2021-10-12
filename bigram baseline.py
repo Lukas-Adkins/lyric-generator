@@ -1,1 +1,137 @@
-{"nbformat":4,"nbformat_minor":0,"metadata":{"colab":{"name":"bigram baseline","provenance":[],"collapsed_sections":[]},"kernelspec":{"name":"python3","display_name":"Python 3"},"language_info":{"name":"python"}},"cells":[{"cell_type":"code","metadata":{"colab":{"base_uri":"https://localhost:8080/"},"id":"bTtR1PdacX1p","executionInfo":{"status":"ok","timestamp":1623250022761,"user_tz":420,"elapsed":28836,"user":{"displayName":"Goo","photoUrl":"https://lh3.googleusercontent.com/a-/AOh14GjbbEHsRtrrfThMDX6j4YCylEvxfolmBTtJggMZ=s64","userId":"07176704086361611497"}},"outputId":"d2a9e97e-88c5-4d69-8431-8d551c8c19fe"},"source":["from google.colab import drive\n","drive.mount('/content/gdrive', force_remount=True)\n","\n","import csv\n","import sys\n","import nltk\n","import random\n","import numpy\n","\n","numSentences = 10\n","max_sent_len = 35\n","random.seed()\n","\n","# Returns songs where start <= data < end\n","def get_songs(start, end):\n","  # csv has a max field limit that is by default, greater than our data size\n","  # So this was added to increase that max \n","  maxInt = sys.maxsize\n","  while True:\n","    try: \n","      csv.field_size_limit(maxInt)\n","      break\n","    except OverflowError:\n","      maxInt = int(maxInt/10)\n","\n","  lyrics = open('/content/gdrive/MyDrive/Colab Notebooks/CS404 Final Project/lyrics.csv', mode='r')\n","  csv_reader = csv.reader(lyrics)\n","  # skip header\n","  next(csv_reader)\n","\n","  songs = []\n","  for line in csv_reader:\n","    date = line[0].split(\"-\")\n","    year = int(date[0])\n","    if year >= start and year < end:\n","      songs.append(line)\n","  return songs\n","\n","# Get lyrics tokens\n","def get_words(songs):\n","  words = []\n","  words.append(\"<s>\")\n","  for line in songs:\n","    song = line[3]\n","    temp = song.split()\n","    for i in range(len(temp)):\n","      words.append(temp[i])\n","    words.append(\"</s>\")\n","  return words\n","\n","# Get Bigrams\n","def get_bigrams(words):\n","  print(\"50 most frequent Bigrams\")\n","  wordFreq = nltk.FreqDist(words)\n","  bigrams = nltk.bigrams(words)\n","  fdist = nltk.FreqDist(bigrams)\n","  most_common = fdist.most_common(50)\n","  wordCount = len(words)\n","  # Syntax example: {'</s> <s>': .0467}\n","  pairProb = {}\n","  for key in fdist:\n","    probability = fdist[key]/wordFreq[key[0]]\n","    pairProb[key] = probability \n","\n","  return pairProb\n","\n","# Generate Sentences\n","def ten_bigram_sentences(pairProb):\n","    print(\"10 bigram sentences:\\n\")\n","    bigram_sentences = []\n","    finalProbArray = []\n","\n","    #print(pairProb)\n","  \n","    for i in range(0, numSentences):\n","      newSentence = []\n","      wordProbArray = []\n","      randWord = '<s>'\n","      while len(newSentence) < max_sent_len:\n","        topBigrams = fiftyProbBigrams(pairProb, randWord)\n","        #print(topBigrams)\n","        bigrams = topBigrams[0]\n","        probs = topBigrams[1]\n","        randWord = random.choices(bigrams, probs, k=1)[0][1]\n","        randP = 0\n","        for z in range(0, len(bigrams)):\n","          if bigrams[z][1] == randWord:\n","            randP = probs[z]\n","        condProb = (randP / sum(probs))\n","        if(randWord == '</s>'):\n","          wordProbArray.append(condProb)\n","          break\n","        if(randWord != '<s>'):\n","          newSentence.append(randWord)\n","          wordProbArray.append(condProb)\n","      #Multiplys conditional probs\n","      finalProbArray.append(numpy.prod(wordProbArray))\n","      bigram_sentences.append(newSentence)\n","    print_sentences(bigram_sentences)\n","\n","# Gets 50 most probable Bigrams given a starting word\n","def fiftyProbBigrams(pairProb, word):\n","  bigrams = []\n","  probs = []\n","  numBigrams = 0\n","\n","  for key in pairProb:\n","    if numBigrams > 50:\n","      break\n","    if(key[0] == word):\n","      bigrams.append(key)\n","      probs.append(pairProb[key])\n","      numBigrams = numBigrams + 1\n","  return bigrams, probs\n","\n","def print_sentences(sent_list):\n","    for sent in sent_list:\n","        for word in sent:\n","            print(word,end=\" \")\n","        print(\"\\n\\n\")\n","\n","if __name__ == \"__main__\":\n","  print(\"2000-2010\")\n","  start = 2000\n","  end = 2010\n","  songs = get_songs(start, end)\n","  words = get_words(songs)\n","  pairProb = get_bigrams(words)\n","  ten_bigram_sentences(pairProb)\n","\n","  print(\"1960-1970\")\n","  start = 1960\n","  end = 1970\n","  songs = get_songs(start, end)\n","  words = get_words(songs)\n","  pairProb = get_bigrams(words)\n","  ten_bigram_sentences(pairProb)"],"execution_count":1,"outputs":[{"output_type":"stream","text":["Mounted at /content/gdrive\n","2000-2010\n","50 most frequent Bigrams\n","10 bigram sentences:\n","\n","[Verse 2] When I have to the whole back's to see That you [Chorus] A secret Hey, little controversy 'Cause we don't succeed Then Superman dat ho Supersoak that you like the way that we \n","\n","\n","[Verse 1: Fergie] It's not give This is not like you know you like you got one to So just a damn near cried More than mine! My heart's crippled by my thing Watch me \n","\n","\n","[Verse 1: Justin Timberlake] Come here, 'cause, gyal, ya open, now everything goes the only what it was born! It took it to the house we've made him hot, show you do with all this \n","\n","\n","[Verse 1] His soul's escaping through All you got [Chorus] Whatcha gon' give this is the whole world as familiar to the magic floating in this is the front of the voice, heard me? I \n","\n","\n","[Verse 1] Baby, when ya Never thought of me yesterday? (Yesterday) [Pre-Chorus: JC with the same and I will you like a long I saw that you know that it's cool, but it out I \n","\n","\n","[Verse 1] Now watch me to think you're white or the only thing (Bounce it seems like that you know about us apart, promise you got you, you like it makes a man may, search \n","\n","\n","[Verse 2] If so, baby, come on) We smokin' my mind There goes da na na da na) Baby boy, I loved you And I loved you wanna see you like you And it's all \n","\n","\n","[Verse 2] And if you do when you don't really shouldn't have to the truth of the first saw with me I don't wanna be together, but tender breast of the way to you got \n","\n","\n","[Verse 3] Just another nigga with the street You can take it out Give you I don't know I know that love's supposed to change or one above mercy; psalm-singing above the whole wide open \n","\n","\n","[Verse 2] In the dance floor It's like the only meant to hear you to be with you wanna put my head just wanna see That money don't know I can now \n","\n","\n","1960-1970\n","50 most frequent Bigrams\n","10 bigram sentences:\n","\n","[Verse 2] Don't let sounds funny feeling (Da-da, da-da, da-da) Over By the time with its own No Guts No banishment, indeed, as we tear treasure When I can never worshipp'd half an old, looks \n","\n","\n","[Verse 2] Well, I love is a good fortune and, before in the white puss,” revealed to the Sunset (Inside, outside, U.S.A.) Santa Claus\" -- Why It's Funny \"Brushy Mountain Conjugal Trailer\" -- fascinating personality \n","\n","\n","[Verse 1] I'm in the time to the girl I can't get it seems To live in love will be On the time has effected does not a moment stupid, at the time that we \n","\n","\n","[Verse 2] Well I'm not a good fortune, in love you And the white lies within a young and I can be you! Shaded ledges and a Garden of the eyes smile I was a \n","\n","\n","[Verse 2] Well, it from the time and a new and a lot of the time you know that I had been so much as we had made Swann’s story, I am I can see \n","\n","\n","[Verse 7] Pretty Flacko Jodye II Society is the time to see the love you stop (stop) I was a new dance Between these two motorcars, mechanics not one of a love with her coarse \n","\n","\n","[Verse 2] When annoyed at that was too late Oh, when he can be the Times. (2018) Francesca Battistelli — I feel you the dark thoughts, radiates through the floor [Full Length Version Verse] Just \n","\n","\n","[Verse 2] I think of the West — \"Last Man\" -- like a new forms that we shall be together every object was said in the floor Let's start for her that I could never \n","\n","\n","[Verse 4] This question asked, it is a little Sis She was an effort, told Joey Purp) — I am I met I was the time that you tell me on that have a little \n","\n","\n","[Verse 2] I Feel It was a lot of a little clan, had not without weeping all of the time to the time to the bullet go for you know I was there are hereby \n","\n","\n"],"name":"stdout"}]}]}
+from google.colab import drive
+drive.mount('/content/gdrive', force_remount=True)
+
+import csv
+import sys
+import nltk
+import random
+import numpy
+
+numSentences = 10
+max_sent_len = 35
+random.seed()
+
+# Returns songs where start <= data < end
+def get_songs(start, end):
+  # csv has a max field limit that is by default, greater than our data size
+  # So this was added to increase that max 
+  maxInt = sys.maxsize
+  while True:
+    try: 
+      csv.field_size_limit(maxInt)
+      break
+    except OverflowError:
+      maxInt = int(maxInt/10)
+
+  lyrics = open('/content/gdrive/MyDrive/Colab Notebooks/CS404 Final Project/lyrics.csv', mode='r')
+  csv_reader = csv.reader(lyrics)
+  # skip header
+  next(csv_reader)
+
+  songs = []
+  for line in csv_reader:
+    date = line[0].split("-")
+    year = int(date[0])
+    if year >= start and year < end:
+      songs.append(line)
+  return songs
+
+# Get lyrics tokens
+def get_words(songs):
+  words = []
+  words.append("<s>")
+  for line in songs:
+    song = line[3]
+    temp = song.split()
+    for i in range(len(temp)):
+      words.append(temp[i])
+    words.append("</s>")
+  return words
+
+# Get Bigrams
+def get_bigrams(words):
+  print("50 most frequent Bigrams")
+  wordFreq = nltk.FreqDist(words)
+  bigrams = nltk.bigrams(words)
+  fdist = nltk.FreqDist(bigrams)
+  most_common = fdist.most_common(50)
+  wordCount = len(words)
+  # Syntax example: {'</s> <s>': .0467}
+  pairProb = {}
+  for key in fdist:
+    probability = fdist[key]/wordFreq[key[0]]
+    pairProb[key] = probability 
+
+  return pairProb
+
+# Generate Sentences
+def ten_bigram_sentences(pairProb):
+    print("10 bigram sentences:\n")
+    bigram_sentences = []
+    finalProbArray = []
+
+    #print(pairProb)
+  
+    for i in range(0, numSentences):
+      newSentence = []
+      wordProbArray = []
+      randWord = '<s>'
+      while len(newSentence) < max_sent_len:
+        topBigrams = fiftyProbBigrams(pairProb, randWord)
+        #print(topBigrams)
+        bigrams = topBigrams[0]
+        probs = topBigrams[1]
+        randWord = random.choices(bigrams, probs, k=1)[0][1]
+        randP = 0
+        for z in range(0, len(bigrams)):
+          if bigrams[z][1] == randWord:
+            randP = probs[z]
+        condProb = (randP / sum(probs))
+        if(randWord == '</s>'):
+          wordProbArray.append(condProb)
+          break
+        if(randWord != '<s>'):
+          newSentence.append(randWord)
+          wordProbArray.append(condProb)
+      #Multiplys conditional probs
+      finalProbArray.append(numpy.prod(wordProbArray))
+      bigram_sentences.append(newSentence)
+    print_sentences(bigram_sentences)
+
+# Gets 50 most probable Bigrams given a starting word
+def fiftyProbBigrams(pairProb, word):
+  bigrams = []
+  probs = []
+  numBigrams = 0
+
+  for key in pairProb:
+    if numBigrams > 50:
+      break
+    if(key[0] == word):
+      bigrams.append(key)
+      probs.append(pairProb[key])
+      numBigrams = numBigrams + 1
+  return bigrams, probs
+
+def print_sentences(sent_list):
+    for sent in sent_list:
+        for word in sent:
+            print(word,end=" ")
+        print("\n\n")
+
+if __name__ == "__main__":
+  print("2000-2010")
+  start = 2000
+  end = 2010
+  songs = get_songs(start, end)
+  words = get_words(songs)
+  pairProb = get_bigrams(words)
+  ten_bigram_sentences(pairProb)
+
+  print("1960-1970")
+  start = 1960
+  end = 1970
+  songs = get_songs(start, end)
+  words = get_words(songs)
+  pairProb = get_bigrams(words)
+  ten_bigram_sentences(pairProb)
